@@ -1,0 +1,108 @@
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #1a1a1a;
+    color: #fff;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    margin: 0;
+}
+
+.container {
+    display: flex;
+    width: 90%;
+    max-width: 1200px;
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    border-radius: 15px;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.2);
+    overflow: hidden;
+}
+
+.form-section, .receipt-section {
+    padding: 40px;
+    width: 50%;
+}
+
+.form-section {
+    border-right: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+h1 {
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+input[type="text"],
+input[type="date"],
+input[type="number"] {
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 15px;
+    background: rgba(255, 255, 255, 0.2);
+    border: none;
+    border-radius: 5px;
+    color: #fff;
+}
+
+.items-section h2 {
+    margin-bottom: 15px;
+}
+
+#items-list .item {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+#add-item-btn, #download-btn {
+    width: 100%;
+    padding: 15px;
+    background: #007bff;
+    border: none;
+    border-radius: 5px;
+    color: #fff;
+    cursor: pointer;
+    margin-top: 20px;
+}
+
+#receipt-preview {
+    background: #fff;
+    color: #333;
+    padding: 30px;
+    border-radius: 10px;
+}
+
+.receipt-header, .receipt-total {
+    padding-bottom: 15px;
+    border-bottom: 1px dashed #ccc;
+    margin-bottom: 15px;
+}
+
+.receipt-items table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.receipt-items th, .receipt-items td {
+    text-align: left;
+    padding: 8px 0;
+}
+
+.watermark {
+    text-align: center;
+    font-size: 0.8em;
+    color: #888;
+    margin-top: 20px;
+}
+
+@media (max-width: 768px) {
+    .container {
+        flex-direction: column;
+    }
+
+    .form-section, .receipt-section {
+        width: 100%;
+    }
+}

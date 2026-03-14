@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>InstaBill LK</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <div class="form-section">
+            <h1>InstaBill LK</h1>
+            <input type="text" id="customer-name" placeholder="Customer Name">
+            <input type="date" id="receipt-date">
+            <div class="items-section">
+                <h2>Items</h2>
+                <div id="items-list"></div>
+                <button id="add-item-btn">+ Add Item</button>
+            </div>
+            <button id="download-btn">Download Receipt</button>
+        </div>
+        <div class="receipt-section">
+            <div id="receipt-preview">
+                <h2>Receipt</h2>
+                <div class="receipt-header">
+                    <p><strong>Customer:</strong> <span id="customer-name-preview"></span></p>
+                    <p><strong>Date:</strong> <span id="receipt-date-preview"></span></p>
+                </div>
+                <div class="receipt-items">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Item</th>
+                                <th>Qty</th>
+                                <th>Price</th>
+                                <th>Total</th>
+                            </tr>
+                        </thead>
+                        <tbody id="receipt-items-body">
+                        </tbody>
+                    </table>
+                </div>
+                <div class="receipt-total">
+                    <p><strong>Total:</strong> <span id="total-amount">0.00</span></p>
+                </div>
+                <div class="watermark">
+                    <p>Generated for free via ST Imagix</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
