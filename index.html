@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>InstaBill LK v8 (Cloud-Ready Pro Edition)</title>
+    <title>InstaBill LK v9 (The Ultimate Painkiller Edition)</title>
     <link rel="stylesheet" href="style.css">
     <link rel="manifest" href="manifest.json">
     <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
@@ -12,27 +12,21 @@
     <script src="https://unpkg.com/html5-qrcode/html5-qrcode.min.js"></script>
 </head>
 <body>
-    <!-- Login overlay is now hidden by default for a frictionless experience -->
-    <div id="login-overlay" class="modal" style="display: none;"><div class="modal-content">
-        <h2>Switch Cashier</h2>
-        <select id="cashier-login-select"></select>
-        <button id="login-btn">Switch</button>
-    </div></div>
-
     <div class="container">
         <div class="form-section">
             <header class="main-header">
                  <div class="header-top">
-                    <h1>InstaBill LK v8</h1>
+                    <h1>InstaBill LK v9</h1>
                     <div class="status-indicators">
                         <span id="current-cashier"></span>
                         <div id="offline-indicator"></div>
                     </div>
                 </div>
                 <div class="pro-features">
-                    <button id="open-dashboard-btn">Dashboard & Z-Report 📊</button>
+                    <button id="open-dashboard-btn">Dashboard 📊</button>
+                    <button id="open-ledger-btn">Credit Ledger ණය පොත</button>
                     <button id="open-catalog-btn">Inventory 📦</button>
-                    <button id="open-settings-btn">Settings & Users ⚙️</button>
+                    <button id="open-settings-btn">Settings ⚙️</button>
                 </div>
             </header>
 
@@ -65,64 +59,44 @@
             </div>
 
             <div class="action-buttons">
+                 <div class="payment-mode">
+                    <select id="payment-status">
+                        <option value="paid">Paid (Cash/Bank)</option>
+                        <option value="credit">Credit (To be paid later)</option>
+                    </select>
+                </div>
                 <button id="finalize-btn" class="main-action">Finalize</button>
                 <button id="print-receipt-btn" class="main-action">Print</button>
-                <button id="whatsapp-btn">WhatsApp</button>
-                <button id="hold-bill-btn">Hold Bill</button>
-                <button id="resume-bills-btn">Resume Bills</button>
+                <button id="hold-bill-btn">Hold</button>
             </div>
         </div>
         <div class="receipt-section">
-            <div id="receipt-preview" class="theme-classic">
-                 <div class="receipt-header">
-                    <img id="logo-preview" src="" alt="Business Logo" style="display: none;">
-                    <h2 id="business-name-preview"></h2>
-                    <p class="line-break">--------------------------------</p>
-                    <p><strong>Customer:</strong> <span id="customer-name-preview"></span></p>
-                    <p><strong>Phone:</strong> <span id="customer-phone-preview"></span></p>
-                    <p><strong>Date:</strong> <span id="receipt-date-preview"></span></p>
-                    <p><strong>Cashier:</strong> <span id="cashier-name-preview"></span></p>
-                    <p class="line-break">--------------------------------</p>
-                </div>
-                <div class="receipt-items">
-                    <table>
-                        <thead><tr><th>Item</th><th>Qty</th><th>Price</th><th>Total</th></tr></thead>
-                        <tbody id="receipt-items-body"></tbody>
-                    </table>
-                </div>
-                <p class="line-break">--------------------------------</p>
-                <div class="receipt-total">
-                    <p><strong>Subtotal:</strong> Rs. <span id="subtotal-amount">0.00</span></p>
-                    <p><strong>Discount:</strong> Rs. <span id="discount-amount">0.00</span></p>
-                    <p id="vat-row" class="tax-row"><strong>VAT (18%):</strong> Rs. <span id="vat-amount">0.00</span></p>
-                    <p id="sscl-row" class="tax-row"><strong>SSCL (2.5%):</strong> Rs. <span id="sscl-amount">0.00</span></p>
-                    <p><strong>Delivery:</strong> Rs. <span id="delivery-amount">0.00</span></p>
-                    <p class="line-break">--------------------------------</p>
-                    <p><strong>Grand Total:</strong> Rs. <span id="grand-total-amount">0.00</span></p>
-                </div>
-                 <div class="loyalty-section">
-                    <p class="line-break">--------------------------------</p>
-                    <p><strong>Loyalty Points:</strong> <span id="loyalty-points-preview">0</span></p>
-                </div>
-                <div class="qr-code-container" id="qr-code-container"></div>
-                <div class="watermark"><p>InstaBill LK v8</p></div>
-            </div>
+             <div id="receipt-preview" class="theme-classic">
+                <!-- Content generated by JS -->
+             </div>
         </div>
     </div>
 
     <!-- Modals -->
+     <div id="credit-ledger-modal" class="modal"><div class="modal-content wide">
+        <span class="close-btn">&times;</span>
+        <h2>Credit Ledger (ණය පොත)</h2>
+        <div id="credit-ledger-list"></div>
+    </div></div>
+
     <div id="product-catalog-modal" class="modal"><div class="modal-content">
         <span class="close-btn">&times;</span>
         <h2>Manage Products & Inventory</h2>
         <form id="add-product-form">
             <input type="text" id="product-name-input" placeholder="Product Name" required>
             <input type="number" id="product-price-input" placeholder="Price" min="0" required>
-            <input type="number" id="product-stock-input" placeholder="Stock Quantity" min="0" required>
-            <input type="text" id="product-barcode-input" placeholder="Barcode (Optional)">
-            <button type="submit">Add/Update Product</button>
+            <input type="number" id="product-stock-input" placeholder="Stock Qty" min="0">
+            <input type="text" id="product-barcode-input" placeholder="Barcode">
+            <button type="submit">Add/Update</button>
         </form>
         <div id="product-list"></div>
     </div></div>
+
     <div id="sales-dashboard-modal" class="modal"><div class="modal-content wide">
         <span class="close-btn">&times;</span>
         <h2>Dashboard</h2>
@@ -139,6 +113,7 @@
         <h3>Recent Receipts</h3>
         <div id="sales-history-list"></div>
     </div></div>
+
     <div id="settings-modal" class="modal"><div class="modal-content wide">
         <span class="close-btn">&times;</span>
         <h2>Settings</h2>
@@ -150,50 +125,34 @@
                 <select id="receipt-theme-select">
                     <option value="theme-classic">Classic Retail</option>
                     <option value="theme-modern">Modern Minimal</option>
-                    <option value="theme-elegant">Elegant Bakery</option>
                 </select>
-                <h3>QR Code</h3>
-                <input type="text" id="payment-link-input" placeholder="Payment Link or Info">
                 <h3>Data</h3>
                 <button id="backup-data-btn">Backup</button>
                 <button id="restore-data-btn">Restore</button>
-                <input type="file" id="restore-data-input" accept=".json" style="display: none;">
+                <input type="file" id="restore-data-input" style="display: none;">
             </div>
             <div class="settings-section">
                 <h3>Manage Cashiers</h3>
                 <form id="add-cashier-form">
-                    <input type="text" id="cashier-name-input" placeholder="New Cashier Name" required>
-                    <button type="submit">Add Cashier</button>
+                    <input type="text" id="cashier-name-input" placeholder="New Cashier" required>
+                    <button type="submit">Add</button>
                 </form>
                 <div id="cashier-list"></div>
             </div>
         </div>
     </div></div>
+
     <div id="z-report-modal" class="modal"><div class="modal-content thermal-print">
         <span class="close-btn">&times;</span>
         <div id="z-report-content"></div>
         <button id="print-z-report-btn">Print Z-Report</button>
     </div></div>
-    <div id="expenses-modal" class="modal"><div class="modal-content">
-        <span class="close-btn">&times;</span>
-        <h2>Track Expenses</h2>
-        <form id="add-expense-form">
-            <input type="text" id="expense-desc-input" placeholder="Expense Description" required>
-            <input type="number" id="expense-amount-input" placeholder="Amount" min="0" required>
-            <button type="submit">Add Expense</button>
-        </form>
-        <div id="expense-list"></div>
-    </div></div>
-    <div id="held-bills-modal" class="modal"><div class="modal-content">
-        <span class="close-btn">&times;</span>
-        <h2>Held Bills</h2>
-        <div id="held-bills-list"></div>
-    </div></div>
-    <div id="barcode-scanner-modal" class="modal"><div class="modal-content">
-        <span class="close-btn">&times;</span>
-        <h2>Scan Barcode</h2>
-        <div id="barcode-scanner"></div>
-    </div></div>
+
+    <!-- All other modals from v8 -->
+    <div id="expenses-modal" class="modal"><div class="modal-content"><span class="close-btn">&times;</span><h2>Expenses</h2><form id="add-expense-form"><input type="text" id="expense-desc-input" required placeholder="Description"><input type="number" id="expense-amount-input" required placeholder="Amount"><button type="submit">Add</button></form><div id="expense-list"></div></div></div>
+    <div id="held-bills-modal" class="modal"><div class="modal-content"><span class="close-btn">&times;</span><h2>Held Bills</h2><div id="held-bills-list"></div></div></div>
+    <div id="barcode-scanner-modal" class="modal"><div class="modal-content"><span class="close-btn">&times;</span><h2>Scan Barcode</h2><div id="barcode-scanner"></div></div></div>
+
 
     <div id="toast"></div>
     <script src="script.js"></script>
