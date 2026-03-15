@@ -1,33 +1,40 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>InstaBill LK v4 (Ultimate)</title>
+    <title>InstaBill LK v8 (Cloud-Ready Pro Edition)</title>
     <link rel="stylesheet" href="style.css">
+    <link rel="manifest" href="manifest.json">
     <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+    <script src="https://unpkg.com/html5-qrcode/html5-qrcode.min.js"></script>
 </head>
 <body>
+    <div id="login-overlay" class="modal" style="display: block;"><div class="modal-content">
+        <h2>Login as Cashier</h2>
+        <select id="cashier-login-select"></select>
+        <button id="login-btn">Login</button>
+        <p>First time? Go to Settings -> Manage Cashiers to add a profile.</p>
+    </div></div>
+
     <div class="container">
         <div class="form-section">
             <header class="main-header">
-                <h1>InstaBill LK v4</h1>
+                 <div class="header-top">
+                    <h1>InstaBill LK v8</h1>
+                    <div class="status-indicators">
+                        <span id="current-cashier"></span>
+                        <div id="offline-indicator"></div>
+                    </div>
+                </div>
                 <div class="pro-features">
-                    <button id="open-dashboard-btn">Sales Dashboard 📊</button>
-                    <button id="open-catalog-btn">Product Catalog 📦</button>
-                    <button id="open-settings-btn">Settings ⚙️</button>
+                    <button id="open-dashboard-btn">Dashboard & Z-Report 📊</button>
+                    <button id="open-catalog-btn">Inventory 📦</button>
+                    <button id="open-settings-btn">Settings & Users ⚙️</button>
                 </div>
             </header>
-
-            <div class="business-profile">
-                <h2>Business Profile</h2>
-                <input type="text" id="business-name" placeholder="Business Name">
-                <label for="business-logo-upload">Business Logo:</label>
-                <input type="file" id="business-logo-upload" accept="image/*">
-            </div>
 
             <input type="text" id="customer-name" placeholder="Customer Name" list="customers-datalist">
             <datalist id="customers-datalist"></datalist>
@@ -38,114 +45,130 @@
                 <h2>Items</h2>
                 <div id="items-list"></div>
                 <datalist id="product-datalist"></datalist>
-                <button id="add-item-btn">+ Add Item</button>
+                <div class="item-controls">
+                     <button id="add-item-btn">+ Add</button>
+                     <button id="scan-barcode-btn">📷 Scan</button>
+                     <button id="speak-item-btn">🎤 Speak</button>
+                </div>
             </div>
 
             <div class="advanced-calculations">
-                <h2>Advanced Calculations</h2>
-                <input type="number" id="discount" placeholder="Discount (%%)" min="0">
+                <div class="discount-control">
+                    <select id="discount-type">
+                        <option value="percentage">Discount (%%)</option>
+                        <option value="flat">Discount (Rs.)</option>
+                    </select>
+                    <input type="number" id="discount-value" placeholder="Value" min="0">
+                </div>
                 <input type="number" id="delivery-charge" placeholder="Delivery Charge (Rs.)" min="0">
             </div>
 
             <div class="action-buttons">
-                <button id="finalize-btn">Finalize & Download</button>
-                <button id="whatsapp-btn">Share via WhatsApp</button>
+                <button id="finalize-btn" class="main-action">Finalize</button>
+                <button id="print-receipt-btn" class="main-action">Print</button>
+                <button id="whatsapp-btn">WhatsApp</button>
+                <button id="hold-bill-btn">Hold Bill</button>
+                <button id="resume-bills-btn">Resume Bills</button>
             </div>
         </div>
         <div class="receipt-section">
-            <div class="template-switcher">
-                <label>Thermal</label>
-                <label class="switch">
-                    <input type="checkbox" id="template-toggle">
-                    <span class="slider round"></span>
-                </label>
-                <label>A4 Invoice</label>
-            </div>
-            <div id="receipt-preview" class="thermal">
-                <div class="receipt-header">
-                    <img id="logo-preview" src="" alt="Business Logo">
-                    <h2 id="business-name-preview"></h2>
-                    <p>--------------------------------</p>
-                    <p><strong>Customer:</strong> <span id="customer-name-preview"></span></p>
-                    <p><strong>Phone:</strong> <span id="customer-phone-preview"></span></p>
-                    <p><strong>Date:</strong> <span id="receipt-date-preview"></span></p>
-                    <p>--------------------------------</p>
-                </div>
-                <div class="receipt-items">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Item</th>
-                                <th>Qty</th>
-                                <th>Price</th>
-                                <th>Total</th>
-                            </tr>
-                        </thead>
-                        <tbody id="receipt-items-body">
-                        </tbody>
-                    </table>
-                </div>
-                <p class="line-break">--------------------------------</p>
-                <div class="receipt-total">
-                    <p><strong>Subtotal:</strong> Rs. <span id="subtotal-amount">0.00</span></p>
-                    <p><strong>Discount:</strong> Rs. <span id="discount-amount">0.00</span></p>
-                    <p><strong>Delivery:</strong> Rs. <span id="delivery-amount">0.00</span></p>
-                    <p class="line-break">--------------------------------</p>
-                    <p><strong>Grand Total:</strong> Rs. <span id="grand-total-amount">0.00</span></p>
-                </div>
-                <p class="line-break">--------------------------------</p>
-                <div class="qr-code-container" id="qr-code-container"></div>
-                <div class="watermark">
-                    <p>Generated for free via ST Imagix</p>
-                </div>
+            <div id="receipt-preview" class="theme-classic">
+                <!-- Receipt content is dynamically generated by script.js -->
             </div>
         </div>
     </div>
 
     <!-- Modals -->
-    <div id="product-catalog-modal" class="modal">
-        <div class="modal-content">
-            <span class="close-btn">&times;</span>
-            <h2>Manage Products</h2>
-            <form id="add-product-form">
-                <input type="text" id="product-name-input" placeholder="Product Name" required>
-                <input type="number" id="product-price-input" placeholder="Price" min="0" required>
-                <button type="submit">Add Product</button>
-            </form>
-            <div id="product-list"></div>
+    <div id="sales-dashboard-modal" class="modal"><div class="modal-content wide">
+        <span class="close-btn">&times;</span>
+        <h2>Dashboard</h2>
+        <div class="dashboard-grid">
+             <div class="dashboard-card sales"><p>Sales (Today)</p><strong id="total-sales">Rs. 0.00</strong></div>
+             <div class="dashboard-card expenses"><p>Expenses (Today)</p><strong id="total-expenses">Rs. 0.00</strong></div>
+             <div class="dashboard-card profit"><p>Net Profit (Today)</p><strong id="net-profit">Rs. 0.00</strong></div>
         </div>
-    </div>
-
-    <div id="sales-dashboard-modal" class="modal">
-        <div class="modal-content">
-            <span class="close-btn">&times;</span>
-            <h2>Sales Dashboard</h2>
-            <div id="dashboard-summary">
-                <p>Today's Total Sales: <strong id="today-sales">Rs. 0.00</strong></p>
-            </div>
-            <canvas id="sales-chart" width="400" height="200"></canvas>
-            <h3>Recent Receipts</h3>
-            <div id="sales-history-list"></div>
+        <div class="dashboard-actions">
+            <button id="z-report-btn">Generate Z-Report</button>
+            <select id="cashier-filter"></select>
         </div>
-    </div>
+        <canvas id="sales-chart" width="400" height="150"></canvas>
+        <h3>Recent Receipts</h3>
+        <div id="sales-history-list"></div>
+    </div></div>
     
-    <div id="settings-modal" class="modal">
-        <div class="modal-content">
-            <span class="close-btn">&times;</span>
-            <h2>Settings</h2>
+    <div id="settings-modal" class="modal"><div class="modal-content wide">
+        <span class="close-btn">&times;</span>
+        <h2>Settings</h2>
+        <div class="settings-grid">
             <div class="settings-section">
+                <h3>Taxes & Theme</h3>
+                <label><input type="checkbox" id="apply-vat"> Apply VAT (18%)</label>
+                <label><input type="checkbox" id="apply-sscl"> Apply SSCL (2.5%)</label>
+                <select id="receipt-theme-select">
+                    <option value="theme-classic">Classic Retail</option>
+                    <option value="theme-modern">Modern Minimal</option>
+                    <option value="theme-elegant">Elegant Bakery</option>
+                </select>
                 <h3>QR Code</h3>
-                <input type="text" id="payment-link-input" placeholder="Payment Link or Info for QR Code">
-                <h3>Data Management</h3>
-                <button id="backup-data-btn">Backup Data</button>
-                <button id="restore-data-btn">Restore Data</button>
+                <input type="text" id="payment-link-input" placeholder="Payment Link or Info">
+                <h3>Data</h3>
+                <button id="backup-data-btn">Backup</button>
+                <button id="restore-data-btn">Restore</button>
                 <input type="file" id="restore-data-input" accept=".json" style="display: none;">
             </div>
+            <div class="settings-section">
+                <h3>Manage Cashiers</h3>
+                <form id="add-cashier-form">
+                    <input type="text" id="cashier-name-input" placeholder="New Cashier Name" required>
+                    <button type="submit">Add Cashier</button>
+                </form>
+                <div id="cashier-list"></div>
+            </div>
         </div>
-    </div>
+    </div></div>
+
+    <div id="z-report-modal" class="modal"><div class="modal-content thermal-print">
+        <span class="close-btn">&times;</span>
+        <div id="z-report-content"></div>
+        <button id="print-z-report-btn">Print Z-Report</button>
+    </div></div>
+
+    <!-- Other modals from v7 (product, expenses, held bills, barcode) go here -->
+    <div id="product-catalog-modal" class="modal"><div class="modal-content">
+        <span class="close-btn">&times;</span>
+        <h2>Manage Products & Inventory</h2>
+        <form id="add-product-form">
+            <input type="text" id="product-name-input" placeholder="Product Name" required>
+            <input type="number" id="product-price-input" placeholder="Price" min="0" required>
+            <input type="number" id="product-stock-input" placeholder="Stock Quantity" min="0" required>
+            <input type="text" id="product-barcode-input" placeholder="Barcode (Optional)">
+            <button type="submit">Add/Update Product</button>
+        </form>
+        <div id="product-list"></div>
+    </div></div>
+    <div id="expenses-modal" class="modal"><div class="modal-content">
+        <span class="close-btn">&times;</span>
+        <h2>Track Expenses</h2>
+        <form id="add-expense-form">
+            <input type="text" id="expense-desc-input" placeholder="Expense Description" required>
+            <input type="number" id="expense-amount-input" placeholder="Amount" min="0" required>
+            <button type="submit">Add Expense</button>
+        </form>
+        <div id="expense-list"></div>
+    </div></div>
+    <div id="held-bills-modal" class="modal"><div class="modal-content">
+        <span class="close-btn">&times;</span>
+        <h2>Held Bills</h2>
+        <div id="held-bills-list"></div>
+    </div></div>
+    <div id="barcode-scanner-modal" class="modal"><div class="modal-content">
+        <span class="close-btn">&times;</span>
+        <h2>Scan Barcode</h2>
+        <div id="barcode-scanner"></div>
+    </div></div>
+
 
     <div id="toast"></div>
-
     <script src="script.js"></script>
 </body>
 </html>
