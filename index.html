@@ -1,31 +1,75 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>InstaBill LK</title>
+    <title>InstaBill LK v4 (Ultimate)</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
 </head>
 <body>
     <div class="container">
         <div class="form-section">
-            <h1>InstaBill LK</h1>
-            <input type="text" id="customer-name" placeholder="Customer Name">
+            <header class="main-header">
+                <h1>InstaBill LK v4</h1>
+                <div class="pro-features">
+                    <button id="open-dashboard-btn">Sales Dashboard 📊</button>
+                    <button id="open-catalog-btn">Product Catalog 📦</button>
+                    <button id="open-settings-btn">Settings ⚙️</button>
+                </div>
+            </header>
+
+            <div class="business-profile">
+                <h2>Business Profile</h2>
+                <input type="text" id="business-name" placeholder="Business Name">
+                <label for="business-logo-upload">Business Logo:</label>
+                <input type="file" id="business-logo-upload" accept="image/*">
+            </div>
+
+            <input type="text" id="customer-name" placeholder="Customer Name" list="customers-datalist">
+            <datalist id="customers-datalist"></datalist>
+            <input type="tel" id="customer-phone" placeholder="Customer Phone (Optional)">
             <input type="date" id="receipt-date">
+
             <div class="items-section">
                 <h2>Items</h2>
                 <div id="items-list"></div>
+                <datalist id="product-datalist"></datalist>
                 <button id="add-item-btn">+ Add Item</button>
             </div>
-            <button id="download-btn">Download Receipt</button>
+
+            <div class="advanced-calculations">
+                <h2>Advanced Calculations</h2>
+                <input type="number" id="discount" placeholder="Discount (%%)" min="0">
+                <input type="number" id="delivery-charge" placeholder="Delivery Charge (Rs.)" min="0">
+            </div>
+
+            <div class="action-buttons">
+                <button id="finalize-btn">Finalize & Download</button>
+                <button id="whatsapp-btn">Share via WhatsApp</button>
+            </div>
         </div>
         <div class="receipt-section">
-            <div id="receipt-preview">
-                <h2>Receipt</h2>
+            <div class="template-switcher">
+                <label>Thermal</label>
+                <label class="switch">
+                    <input type="checkbox" id="template-toggle">
+                    <span class="slider round"></span>
+                </label>
+                <label>A4 Invoice</label>
+            </div>
+            <div id="receipt-preview" class="thermal">
                 <div class="receipt-header">
+                    <img id="logo-preview" src="" alt="Business Logo">
+                    <h2 id="business-name-preview"></h2>
+                    <p>--------------------------------</p>
                     <p><strong>Customer:</strong> <span id="customer-name-preview"></span></p>
+                    <p><strong>Phone:</strong> <span id="customer-phone-preview"></span></p>
                     <p><strong>Date:</strong> <span id="receipt-date-preview"></span></p>
+                    <p>--------------------------------</p>
                 </div>
                 <div class="receipt-items">
                     <table>
@@ -41,15 +85,67 @@
                         </tbody>
                     </table>
                 </div>
+                <p class="line-break">--------------------------------</p>
                 <div class="receipt-total">
-                    <p><strong>Total:</strong> <span id="total-amount">0.00</span></p>
+                    <p><strong>Subtotal:</strong> Rs. <span id="subtotal-amount">0.00</span></p>
+                    <p><strong>Discount:</strong> Rs. <span id="discount-amount">0.00</span></p>
+                    <p><strong>Delivery:</strong> Rs. <span id="delivery-amount">0.00</span></p>
+                    <p class="line-break">--------------------------------</p>
+                    <p><strong>Grand Total:</strong> Rs. <span id="grand-total-amount">0.00</span></p>
                 </div>
+                <p class="line-break">--------------------------------</p>
+                <div class="qr-code-container" id="qr-code-container"></div>
                 <div class="watermark">
                     <p>Generated for free via ST Imagix</p>
                 </div>
             </div>
         </div>
     </div>
+
+    <!-- Modals -->
+    <div id="product-catalog-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn">&times;</span>
+            <h2>Manage Products</h2>
+            <form id="add-product-form">
+                <input type="text" id="product-name-input" placeholder="Product Name" required>
+                <input type="number" id="product-price-input" placeholder="Price" min="0" required>
+                <button type="submit">Add Product</button>
+            </form>
+            <div id="product-list"></div>
+        </div>
+    </div>
+
+    <div id="sales-dashboard-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn">&times;</span>
+            <h2>Sales Dashboard</h2>
+            <div id="dashboard-summary">
+                <p>Today's Total Sales: <strong id="today-sales">Rs. 0.00</strong></p>
+            </div>
+            <canvas id="sales-chart" width="400" height="200"></canvas>
+            <h3>Recent Receipts</h3>
+            <div id="sales-history-list"></div>
+        </div>
+    </div>
+    
+    <div id="settings-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn">&times;</span>
+            <h2>Settings</h2>
+            <div class="settings-section">
+                <h3>QR Code</h3>
+                <input type="text" id="payment-link-input" placeholder="Payment Link or Info for QR Code">
+                <h3>Data Management</h3>
+                <button id="backup-data-btn">Backup Data</button>
+                <button id="restore-data-btn">Restore Data</button>
+                <input type="file" id="restore-data-input" accept=".json" style="display: none;">
+            </div>
+        </div>
+    </div>
+
+    <div id="toast"></div>
+
     <script src="script.js"></script>
 </body>
 </html>
