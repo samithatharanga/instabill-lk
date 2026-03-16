@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>InstaBill LK v10 (Service & Booking Update)</title>
+    <title>InstaBill LK v11 (Retail & Data Sync Update)</title>
     <link rel="stylesheet" href="style.css">
     <link rel="manifest" href="manifest.json">
     <!-- External Libraries -->
@@ -38,6 +38,7 @@
                 <label for="document-type">Document Type:</label>
                 <select id="document-type">
                     <option value="invoice">Tax Invoice</option>
+                    <option value="bill">Bill</option>
                     <option value="quotation">Quotation/Estimate</option>
                 </select>
             </div>
@@ -98,12 +99,7 @@
     <!-- ============================================= -->
     <!-- ALL MODALS - Kept outside the main container -->
     <!-- ============================================= -->
-    <div id="credit-ledger-modal" class="modal"><div class="modal-content wide">
-        <span class="close-btn">&times;</span>
-        <h2>Credit Ledger (ණය පොත)</h2>
-        <button id="download-debtors-csv-btn" class="csv-export-btn">Download Debtors List (CSV)</button>
-        <div id="credit-ledger-list" class="table-container"></div>
-    </div></div>
+    <div id="credit-ledger-modal" class="modal"><div class="modal-content wide"><span class="close-btn">&times;</span><h2>Credit Ledger (ණය පොත)</h2><button id="download-debtors-csv-btn" class="csv-export-btn">Download Debtors List (CSV)</button><div id="credit-ledger-list" class="table-container"></div></div></div>
 
     <div id="sales-dashboard-modal" class="modal"><div class="modal-content wide">
         <span class="close-btn">&times;</span>
@@ -111,6 +107,7 @@
         <div class="dashboard-actions">
             <button id="z-report-btn">Generate Daily Z-Report</button>
             <button id="download-sales-csv-btn" class="csv-export-btn">Download Daily Sales (CSV)</button>
+            <button id="close-register-btn" class="danger-btn">Close Register & Export</button>
             <select id="cashier-filter"></select>
         </div>
         <div class="dashboard-grid">
@@ -123,7 +120,7 @@
         <div id="sales-history-list" class="table-container"></div>
     </div></div>
 
-    <div id="product-catalog-modal" class="modal"><div class="modal-content"><span class="close-btn">&times;</span><h2>Inventory Management</h2><form id="add-product-form"><input type="text" id="product-name-input" placeholder="Product Name" required><input type="number" id="product-price-input" placeholder="Price" required min="0"><input type="number" id="product-stock-input" placeholder="Stock Qty"><input type="text" id="product-barcode-input" placeholder="Barcode (Optional)"><button type="submit">Add/Update Product</button></form><div id="product-list" class="table-container"></div></div></div>
+    <div id="product-catalog-modal" class="modal"><div class="modal-content wide"><span class="close-btn">&times;</span><h2>Inventory Management</h2><div class="inventory-actions"><form id="add-product-form"><input type="text" id="product-name-input" placeholder="Product Name" required><input type="number" id="product-price-input" placeholder="Price" required min="0"><input type="number" id="product-stock-input" placeholder="Stock Qty"><input type="text" id="product-barcode-input" placeholder="Barcode (Optional)"><button type="submit">Add/Update Product</button></form><div class="inventory-data-management"><button id="export-inventory-btn">Export Inventory (CSV)</button><input type="file" id="import-inventory-input" accept=".csv" style="display:none;"><button id="import-inventory-btn">Import Inventory (CSV)</button></div></div><div id="product-list" class="table-container"></div></div></div>
     
     <div id="settings-modal" class="modal"><div class="modal-content wide"><span class="close-btn">&times;</span><h2>Settings</h2><div classs="settings-grid"><div class="settings-section"><h3>Branding & Theme</h3><input type="file" id="business-logo-upload" accept="image/*" style="display:none;"><button id="upload-logo-btn">Upload Logo</button><select id="receipt-theme-select"><option value="theme-classic">Classic Retail</option><option value="theme-modern">Modern Minimal</option></select><h3>Taxes</h3><label><input type="checkbox" id="apply-vat"> Apply VAT (18%)</label><label><input type="checkbox" id="apply-sscl"> Apply SSCL (2.5%)</label><label for="payment-link-input">UPI/Payment Link for QR Code:</label><input type="text" id="payment-link-input" placeholder="Enter payment link here"><label for="footer-notes">Footer Notes / Terms:</label><textarea id="footer-notes" rows="3" placeholder="e.g., Goods once sold will not be taken back."></textarea></div><div class="settings-section"><h3>User Management</h3><form id="add-cashier-form"><input type="text" id="cashier-name-input" placeholder="New Cashier Name" required><button type="submit">Add Cashier</button></form><div id="cashier-list"></div></div><div class="settings-section"><h3>Data Management</h3><button id="backup-data-btn">Backup All Data</button><button id="restore-data-btn">Restore from Backup</button><input type="file" id="restore-data-input" accept=".json" style="display:none;"><button id="clear-data-btn" class="danger-btn">Clear All Data</button></div></div></div></div>
     

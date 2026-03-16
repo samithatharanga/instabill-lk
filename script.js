@@ -1,11 +1,20 @@
 document.addEventListener('DOMContentLoaded', () => {
     // ===================================================================================
-    // InstaBill LK v10 (Service & Booking Update) - FULLY IMPLEMENTED
+    // InstaBill LK v11 (The Ultimate Retail & Data Sync Update)
     // Lead Architect: Gemini (SaaS Mode) for ST Imagix
     // ===================================================================================
 
-    // --- Strictly Enforced Auto-Login ---
-    localStorage.setItem('currentCashier', localStorage.getItem('currentCashier') || 'Admin');
+    // --- Strictly Enforced Auto-Login & Cashier Bug Fix ---
+    let loadedCashier = localStorage.getItem('currentCashier');
+    try {
+        // Attempt to parse, this will fix values like "\"Admin\""
+        loadedCashier = JSON.parse(loadedCashier);
+    } catch (e) { /* Not a JSON string, use as is */ }
+    // Final cleanup if it's still weirdly formatted or null
+    if (typeof loadedCashier !== 'string' || loadedCashier.trim() === '' || loadedCashier.includes('\"')) {
+        loadedCashier = 'Admin';
+    }
+    localStorage.setItem('currentCashier', loadedCashier);
 
     // --- Global State & Centralized DOM Cache ---
     const state = {
@@ -15,7 +24,7 @@ document.addEventListener('DOMContentLoaded', () => {
         expenses: JSON.parse(localStorage.getItem('expenses')) || [],
         cashiers: JSON.parse(localStorage.getItem('cashiers')) || ['Admin'],
         heldBills: JSON.parse(localStorage.getItem('heldBills')) || [],
-        currentCashier: localStorage.getItem('currentCashier'),
+        currentCashier: loadedCashier,
         qrCodeInstance: null,
         salesChart: null,
         html5QrCode: null
@@ -23,7 +32,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const dom = {
         // Forms & Inputs
-        documentType: document.getElementById('document-type'), // V10 NEW
+        documentType: document.getElementById('document-type'),
         businessName: document.getElementById('business-name'),
         customerName: document.getElementById('customer-name'),
         customerPhone: document.getElementById('customer-phone'),
@@ -34,10 +43,10 @@ document.addEventListener('DOMContentLoaded', () => {
         discountType: document.getElementById('discount-type'),
         discountValue: document.getElementById('discount-value'),
         deliveryCharge: document.getElementById('delivery-charge'),
-        advancePayment: document.getElementById('advance-payment'), // V10 NEW
+        advancePayment: document.getElementById('advance-payment'),
         paymentStatus: document.getElementById('payment-status'),
         paymentLinkInput: document.getElementById('payment-link-input'),
-        footerNotes: document.getElementById('footer-notes'), // V10 NEW
+        footerNotes: document.getElementById('footer-notes'),
 
         // Main Action Buttons
         addItemBtn: document.getElementById('add-item-btn'),
@@ -71,10 +80,14 @@ document.addEventListener('DOMContentLoaded', () => {
         openSettingsBtn: document.getElementById('open-settings-btn'),
         dashboardExpenses: document.getElementById('dashboard-expenses'),
 
-        // CSV Export Buttons
+        // CSV & Data Buttons
         downloadSalesCsvBtn: document.getElementById('download-sales-csv-btn'),
         downloadDebtorsCsvBtn: document.getElementById('download-debtors-csv-btn'),
-
+        closeRegisterBtn: document.getElementById('close-register-btn'),
+        exportInventoryBtn: document.getElementById('export-inventory-btn'),
+        importInventoryBtn: document.getElementById('import-inventory-btn'),
+        importInventoryInput: document.getElementById('import-inventory-input'),
+        
         // Settings Panel Elements
         uploadLogoBtn: document.getElementById('upload-logo-btn'),
         businessLogoUpload: document.getElementById('business-logo-upload'),
@@ -102,7 +115,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- PRIMARY INITIALIZATION ---
     function initializeApp() {
-        console.log("InstaBill LK v10 Initializing...");
+        console.log("InstaBill LK v11 Initializing...");
         registerAllEventListeners();
         loadAndApplySettings();
         renderAllLists();
@@ -135,6 +148,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
         dom.downloadSalesCsvBtn.addEventListener('click', exportSalesToCsv);
         dom.downloadDebtorsCsvBtn.addEventListener('click', exportDebtorsToCsv);
+        dom.closeRegisterBtn.addEventListener('click', closeRegister);
+        dom.exportInventoryBtn.addEventListener('click', exportInventoryToCsv);
+        dom.importInventoryBtn.addEventListener('click', () => dom.importInventoryInput.click());
+        dom.importInventoryInput.addEventListener('change', importInventoryFromCsv);
 
         dom.uploadLogoBtn.addEventListener('click', () => dom.businessLogoUpload.click());
         dom.businessLogoUpload.addEventListener('change', handleLogoUpload);
@@ -195,22 +212,22 @@ document.addEventListener('DOMContentLoaded', () => {
             price: parseFloat(item.querySelector('.item-price').value) || 0,
         }));
         return {
-            documentType: dom.documentType.value, // V10 NEW
+            documentType: dom.documentType.value,
             businessName: dom.businessName.value,
             logo: localStorage.getItem('businessLogo'),
             customerName: dom.customerName.value,
             customerPhone: dom.customerPhone.value,
-            date: dom.receiptDate.value,
+            dateTime: new Date(), // V11 - Capture exact date and time
             cashier: state.currentCashier,
             items: items,
             discountValue: parseFloat(dom.discountValue.value) || 0,
             discountType: dom.discountType.value,
             deliveryCharge: parseFloat(dom.deliveryCharge.value) || 0,
-            advancePayment: parseFloat(dom.advancePayment.value) || 0, // V10 NEW
+            advancePayment: parseFloat(dom.advancePayment.value) || 0,
             applyVat: dom.applyVat.checked,
             applySscl: dom.applySscl.checked,
             paymentLink: dom.paymentLinkInput.value,
-            footerNotes: dom.footerNotes.value // V10 NEW
+            footerNotes: dom.footerNotes.value
         };
     }
 
@@ -233,8 +250,15 @@ document.addEventListener('DOMContentLoaded', () => {
         const balanceDue = grandTotal - data.advancePayment;
 
         const logoEl = data.logo ? `<img id="logo-preview" src="${data.logo}" alt="Logo">` : '';
-        const mainTitle = data.documentType === 'quotation' ? 'QUOTATION' : 'INVOICE';
+        const mainTitle = {
+            'invoice': 'TAX INVOICE',
+            'bill': 'BILL',
+            'quotation': 'QUOTATION'
+        }[data.documentType] || 'INVOICE';
+        
         const footerNotesEl = data.footerNotes ? `<p class="receipt-footer-notes">${data.footerNotes}</p>` : '';
+        const dateStr = data.dateTime.toLocaleDateString();
+        const timeStr = data.dateTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); // V11 - Time display
 
         dom.receiptPreview.innerHTML = `
             <div class="receipt-header">
@@ -244,7 +268,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <p>--------------------------------</p>
                 <p><strong>Customer:</strong> ${data.customerName || 'N/A'}</p>
                 <p><strong>Phone:</strong> ${data.customerPhone || 'N/A'}</p>
-                <p><strong>Date:</strong> ${data.date}</p>
+                <p><strong>Date:</strong> ${dateStr} | <strong>Time:</strong> ${timeStr}</p>
                 <p><strong>Cashier:</strong> ${data.cashier}</p>
                 <p>--------------------------------</p>
             </div>
@@ -293,8 +317,10 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- ACTION HANDLERS ---
     function finalizeAndSaveReceipt() {
         const data = getFormData();
+        // Convert date object to ISO string for storage
+        const storableData = {...data, dateTime: data.dateTime.toISOString()};
+
         if (data.documentType === 'quotation') {
-            // For quotations, just print or download, don't save to DB.
             showToast('Quotation generated. Use Print or Download.', false);
             html2canvas(dom.receiptPreview, {scale: 2.5}).then(canvas => {
                 const link = document.createElement('a');
@@ -306,8 +332,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         if (!data.customerName) { return showToast('Customer name is required for invoices!', true); }
+        if (data.items.length === 0 || data.items.every(i => !i.name)) { return showToast('Cannot save an empty bill!', true); }
         const grandTotal = parseFloat(document.getElementById('grand-total-amount').textContent);
-        if (isNaN(grandTotal) || grandTotal <= 0) { return showToast('Cannot save an empty or zero-value invoice!', true); }
 
         let customer = state.customers.find(c => c.name === data.customerName);
         if (!customer) {
@@ -325,7 +351,7 @@ document.addEventListener('DOMContentLoaded', () => {
             customer.loyalty = (customer.loyalty || 0) + Math.floor(grandTotal / 100);
         }
 
-        state.salesHistory.push({ ...data, total: grandTotal, balanceDue: balanceDue, id: Date.now(), status: dom.paymentStatus.value });
+        state.salesHistory.push({ ...storableData, total: grandTotal, balanceDue: balanceDue, id: Date.now(), status: dom.paymentStatus.value });
         saveStateAndRerender();
         showToast('Invoice Finalized & Saved!', false);
         html2canvas(dom.receiptPreview, {scale: 2.5}).then(canvas => {
@@ -356,7 +382,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return showToast('Cannot hold an empty bill.', true);
         }
         data.holdId = `hold-${Date.now()}`;
-        state.heldBills.push(data);
+        state.heldBills.push({...data, dateTime: data.dateTime.toISOString()});
         saveStateAndRerender();
         showToast(`Bill for ${data.customerName || 'customer'} has been held.`);
         resetForm();
@@ -366,7 +392,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const billIndex = state.heldBills.findIndex(b => b.holdId === holdId);
         if (billIndex === -1) return;
         const bill = state.heldBills[billIndex];
-        resetForm(); // Clear the form before loading
+        resetForm(); 
         dom.documentType.value = bill.documentType || 'invoice';
         dom.customerName.value = bill.customerName;
         dom.customerPhone.value = bill.customerPhone;
@@ -374,6 +400,7 @@ document.addEventListener('DOMContentLoaded', () => {
         dom.discountType.value = bill.discountType;
         dom.deliveryCharge.value = bill.deliveryCharge;
         dom.advancePayment.value = bill.advancePayment || '';
+        dom.receiptDate.value = bill.dateTime.slice(0, 10);
         bill.items.forEach(item => addItem(item));
         state.heldBills.splice(billIndex, 1);
         saveStateAndRerender();
@@ -381,13 +408,17 @@ document.addEventListener('DOMContentLoaded', () => {
         updatePreviews();
     }
 
-    // --- CSV EXPORT ---
+    // --- CSV & DATA EXPORT/IMPORT ---
     function exportSalesToCsv() {
         const today = new Date().toISOString().slice(0, 10);
-        const salesToExport = state.salesHistory.filter(sale => sale.date === today && sale.documentType !== 'quotation');
+        const salesToExport = state.salesHistory.filter(sale => sale.dateTime.startsWith(today) && sale.documentType !== 'quotation');
         if (salesToExport.length === 0) { return showToast('No sales today to export.', true); }
-        const headers = ['Receipt ID', 'Date', 'Customer', 'Total', 'Status', 'Cashier'];
-        const rows = salesToExport.map(s => [s.id, s.date, `"${s.customerName}"`, s.total.toFixed(2), s.status, s.cashier].join(','));
+        const headers = ['Receipt ID', 'Date', 'Time', 'Customer', 'Total', 'Status', 'Cashier'];
+        const rows = salesToExport.map(s => {
+            const d = new Date(s.dateTime);
+            const time = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            return [s.id, d.toLocaleDateString(), time, `"${s.customerName}"`, s.total.toFixed(2), s.status, s.cashier].join(',');
+        });
         downloadCsv([headers.join(','), ...rows].join('\n'), `daily_sales_${today}.csv`);
     }
 
@@ -399,15 +430,86 @@ document.addEventListener('DOMContentLoaded', () => {
         downloadCsv([headers.join(','), ...rows].join('\n'), 'debtors_list.csv');
     }
 
+    function exportInventoryToCsv() {
+        if (state.productCatalog.length === 0) { return showToast('Inventory is empty.', true); }
+        const headers = ['Name', 'Price', 'Stock', 'Barcode'];
+        const rows = state.productCatalog.map(p => [
+            `"${p.name.replace(/"/g, '''''')}"`, p.price, p.stock || 0, p.barcode || ''
+        ].join(','));
+        downloadCsv([headers.join(','), ...rows].join('\n'), 'inventory_export.csv');
+        showToast('Inventory exported.');
+    }
+
+    function importInventoryFromCsv(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = e => {
+            const text = e.target.result;
+            const rows = text.split('\n').slice(1); // Skip header row
+            let updatedCount = 0, newCount = 0;
+            const productMap = new Map(state.productCatalog.map(p => [p.name.toLowerCase(), p]));
+
+            rows.forEach(row => {
+                if (row.trim() === '') return;
+                const [name, price, stock, barcode] = row.split(',').map(v => v.trim().replace(/^"|"$/g, ''));
+                if (!name || isNaN(parseFloat(price))) {
+                    console.warn('Skipping invalid CSV row:', row);
+                    return;
+                }
+
+                const product = {
+                    name: name,
+                    price: parseFloat(price),
+                    stock: parseInt(stock) || 0,
+                    barcode: barcode || ''
+                };
+
+                if (productMap.has(name.toLowerCase())) {
+                    Object.assign(productMap.get(name.toLowerCase()), product);
+                    updatedCount++;
+                } else {
+                    productMap.set(name.toLowerCase(), product);
+                    newCount++;
+                }
+            });
+
+            state.productCatalog = Array.from(productMap.values());
+            saveStateAndRerender();
+            showToast(`Inventory Imported: ${newCount} new, ${updatedCount} updated.`);
+        };
+        reader.readAsText(file);
+        event.target.value = ''; // Reset file input
+    }
+
+    function closeRegister() {
+        if (!confirm('Are you sure you want to close the register? This will export today\'s summary and offer a final data backup.')) return;
+        const today = new Date().toISOString().slice(0, 10);
+        const todaysSales = state.salesHistory.filter(s => s.dateTime.startsWith(today) && s.documentType !== 'quotation');
+        if (todaysSales.length === 0) {
+            return showToast('No sales recorded today. Nothing to close.', true);
+        }
+
+        // 1. Export daily summary
+        exportSalesToCsv();
+        showToast('Daily summary has been exported.', false);
+
+        // 2. Offer full data backup
+        setTimeout(() => {
+             if (confirm('Do you want to download a complete backup of all application data?')) {
+                backupData();
+            }
+        }, 1000); // Delay to ensure first toast is seen
+    }
+
     function downloadCsv(content, fileName) {
-        const blob = new Blob(["\uFEFF" + content], { type: 'text/csv;charset=utf-8;' }); // Added BOM for Excel
+        const blob = new Blob(["\uFEFF" + content], { type: 'text/csv;charset=utf-8;' });
         const link = document.createElement('a');
         link.href = URL.createObjectURL(blob);
         link.setAttribute('download', fileName);
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
-        showToast(`${fileName} downloaded.`);
     }
 
     // --- MODAL & DYNAMIC CLICK HANDLING ---
@@ -436,7 +538,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function renderProductCatalog() {
         dom.productDatalist.innerHTML = state.productCatalog.map(p => `<option value="${p.name}"></option>`).join('');
-        dom.productList.innerHTML = state.productCatalog.map(p => `<div><span>${p.name} - Rs.${p.price}</span><button data-action="delete-product" data-name="${p.name}">X</button></div>`).join('');
+        if (state.productCatalog.length === 0) {
+            dom.productList.innerHTML = '<p>No products in inventory. Add one above or import a CSV file.</p>';
+            return;
+        }
+        dom.productList.innerHTML = `<table>
+            <thead><tr><th>Name</th><th>Price</th><th>Stock</th><th>Barcode</th><th>Actions</th></tr></thead>
+            <tbody>${state.productCatalog.map(p => `
+                <tr>
+                    <td>${p.name}</td>
+                    <td>Rs. ${p.price.toFixed(2)}</td>
+                    <td>${p.stock || 0}</td>
+                    <td>${p.barcode || 'N/A'}</td>
+                    <td><button data-action="delete-product" data-name="${p.name}">X</button></td>
+                </tr>
+            `).join('')}</tbody>
+        </table>`;
     }
 
     function renderCustomerDatalist() {
@@ -479,8 +596,10 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- DYNAMIC ACTION HANDLERS (EVENT DELEGATION) ---
     function handleProductListActions(e) {
         if (e.target.dataset.action === 'delete-product') {
-            state.productCatalog = state.productCatalog.filter(p => p.name !== e.target.dataset.name);
-            saveStateAndRerender();
+            if (confirm(`Are you sure you want to delete ${e.target.dataset.name}?`)) {
+                state.productCatalog = state.productCatalog.filter(p => p.name !== e.target.dataset.name);
+                saveStateAndRerender();
+            }
         }
     }
 
@@ -495,7 +614,7 @@ document.addEventListener('DOMContentLoaded', () => {
             customer.debt = 0;
             showToast(`${name}'s debt has been settled.`);
             saveStateAndRerender();
-            renderCreditLedger(); // Re-render the ledger view
+            renderCreditLedger();
         }
         if (action === 'remind-debt') {
             if (!customer.phone) return showToast('No phone number for this customer.', true);
@@ -531,7 +650,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 localStorage.setItem(key, JSON.stringify(state[key]));
             }
         });
-        // V10 - Persist specific UI values
         localStorage.setItem('businessName', dom.businessName.value);
         localStorage.setItem('applyVat', dom.applyVat.checked);
         localStorage.setItem('applySscl', dom.applySscl.checked);
@@ -546,7 +664,7 @@ document.addEventListener('DOMContentLoaded', () => {
         dom.applyVat.checked = JSON.parse(localStorage.getItem('applyVat')) || false;
         dom.applySscl.checked = JSON.parse(localStorage.getItem('applySscl')) || false;
         dom.paymentLinkInput.value = localStorage.getItem('paymentLink') || '';
-        dom.footerNotes.value = localStorage.getItem('footerNotes') || 'Goods once sold will not be taken back.'; // V10 NEW
+        dom.footerNotes.value = localStorage.getItem('footerNotes') || 'Goods once sold will not be taken back.';
         const theme = localStorage.getItem('receiptTheme') || 'theme-classic';
         dom.receiptThemeSelect.value = theme;
         applyReceiptTheme(theme);
@@ -565,10 +683,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const existing = state.productCatalog.find(p => p.name.toLowerCase() === name.toLowerCase());
         if (existing) {
             existing.price = price;
+            showToast(`Product '${name}' updated.`);
         } else {
             state.productCatalog.push({ name, price, stock: dom.productStockInput.value || 0, barcode: dom.productBarcodeIput.value || '' });
+            showToast(`Product '${name}' added.`);
         }
-        showToast(`Product '${name}' saved.`);
         saveStateAndRerender();
         dom.addProductForm.reset();
     }
@@ -596,12 +715,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!description || isNaN(amount) || amount <= 0) {
             return showToast('Please enter a valid description and amount.', true);
         }
-        state.expenses.push({
-            id: `exp-${Date.now()}`,
-            date: new Date().toISOString().slice(0, 10),
-            description,
-            amount
-        });
+        state.expenses.push({ id: `exp-${Date.now()}`, date: new Date().toISOString().slice(0, 10), description, amount });
         saveStateAndRerender();
         showToast('Expense added successfully.');
         descInput.value = '';
@@ -621,9 +735,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     function clearAllData() {
-        if (confirm('Are you sure you want to delete ALL data? This cannot be undone.')) {
-            localStorage.clear();
-            window.location.reload();
+        if (confirm('DANGER! Are you sure you want to delete ALL data? This cannot be undone.')) {
+            if (prompt('To confirm, type \'DELETE ALL\'') === 'DELETE ALL') {
+                localStorage.clear();
+                window.location.reload();
+            }
         }
     }
 
@@ -633,13 +749,19 @@ document.addEventListener('DOMContentLoaded', () => {
         delete backupState.salesChart;
         delete backupState.html5QrCode;
         const blob = new Blob([JSON.stringify(backupState)], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
+        const fileName = `instabill_backup_${new Date().toISOString().slice(0, 10)}.json`;
+        downloadUrl(URL.createObjectURL(blob), fileName);
+        showToast('Backup downloaded.');
+    }
+
+    function downloadUrl(url, fileName) {
         const a = document.createElement('a');
         a.href = url;
-        a.download = `instabill_backup_${new Date().toISOString().slice(0, 10)}.json`;
+        a.download = fileName;
+        document.body.appendChild(a);
         a.click();
         URL.revokeObjectURL(url);
-        showToast('Backup downloaded.');
+        document.body.removeChild(a);
     }
 
     function restoreData(event) {
@@ -648,6 +770,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const reader = new FileReader();
         reader.onload = (e) => {
             try {
+                if(!confirm('Restoring will overwrite current data. Proceed?')) return;
                 const restoredData = JSON.parse(e.target.result);
                 Object.keys(restoredData).forEach(key => {
                     if(state.hasOwnProperty(key)) {
@@ -657,7 +780,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 saveStateAndRerender();
                 loadAndApplySettings();
                 updatePreviews();
-                showToast('Data restored successfully!');
+                showToast('Data restored successfully! The page will now reload.');
+                setTimeout(() => window.location.reload(), 1500);
             } catch (err) {
                 showToast('Invalid or corrupt backup file.', true);
                 console.error("Restore failed:", err);
@@ -672,9 +796,10 @@ document.addEventListener('DOMContentLoaded', () => {
         dom.itemsList.innerHTML = '';
         dom.discountValue.value = '';
         dom.deliveryCharge.value = '';
-        dom.advancePayment.value = ''; // V10 NEW
+        dom.advancePayment.value = '';
         dom.paymentStatus.value = 'paid';
-        dom.documentType.value = 'invoice'; // V10 NEW
+        dom.documentType.value = 'invoice';
+        dom.receiptDate.valueAsDate = new Date(); // Reset date to today
         updatePreviews();
     }
 
@@ -723,7 +848,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function renderSalesDashboard() {
         const today = new Date().toISOString().slice(0, 10);
         
-        const todaysSales = state.salesHistory.filter(sale => sale.date === today && sale.status === 'paid' && sale.documentType !== 'quotation');
+        const todaysSales = state.salesHistory.filter(s => s.dateTime.startsWith(today) && s.status === 'paid' && s.documentType !== 'quotation');
         const todaysExpenses = state.expenses.filter(exp => exp.date === today);
         
         const totalSales = todaysSales.reduce((acc, sale) => acc + sale.total, 0);
@@ -738,13 +863,13 @@ document.addEventListener('DOMContentLoaded', () => {
         for (let i = 6; i >= 0; i--) {
             const d = new Date();
             d.setDate(d.getDate() - i);
-            const dateString = d.toISOString().slice(0, 10);
-            salesByDay[dateString] = 0;
+            salesByDay[d.toISOString().slice(0, 10)] = 0;
         }
 
         state.salesHistory.forEach(sale => {
-            if (salesByDay.hasOwnProperty(sale.date) && sale.status === 'paid' && sale.documentType !== 'quotation') {
-                salesByDay[sale.date] += sale.total;
+            const saleDate = sale.dateTime.slice(0,10);
+            if (salesByDay.hasOwnProperty(saleDate) && sale.status === 'paid' && sale.documentType !== 'quotation') {
+                salesByDay[saleDate] += sale.total;
             }
         });
 
@@ -752,9 +877,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const chartData = Object.values(salesByDay);
 
         const ctx = document.getElementById('sales-chart').getContext('2d');
-        if (state.salesChart) {
-            state.salesChart.destroy();
-        }
+        if (state.salesChart) state.salesChart.destroy();
         state.salesChart = new Chart(ctx, {
             type: 'bar',
             data: {
@@ -768,12 +891,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     borderRadius: 4
                 }]
             },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: { y: { beginAtZero: true, ticks: { color: '#e0e0e0' } }, x: { ticks: { color: '#e0e0e0' } } },
-                plugins: { legend: { display: false } }
-            }
+            options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true }, x: {} }, plugins: { legend: { display: false } } }
         });
 
         const salesHistoryList = document.getElementById('sales-history-list');
