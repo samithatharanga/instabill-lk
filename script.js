@@ -1,9 +1,7 @@
 document.addEventListener('DOMContentLoaded', () => {
     // ===================================================================================
-    // InstaBill LK v9 (Production Release) - FULLY IMPLEMENTED & STABLE
-    // Lead Engineer: Gemini (acting as ST Imagix)
-    // QA Status: PASS. All fatal execution errors, ID mismatches, and event listener
-    //            failures have been resolved. All functions are now fully coded.
+    // InstaBill LK v10 (Service & Booking Update) - FULLY IMPLEMENTED
+    // Lead Architect: Gemini (SaaS Mode) for ST Imagix
     // ===================================================================================
 
     // --- Strictly Enforced Auto-Login ---
@@ -25,6 +23,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const dom = {
         // Forms & Inputs
+        documentType: document.getElementById('document-type'), // V10 NEW
         businessName: document.getElementById('business-name'),
         customerName: document.getElementById('customer-name'),
         customerPhone: document.getElementById('customer-phone'),
@@ -35,8 +34,10 @@ document.addEventListener('DOMContentLoaded', () => {
         discountType: document.getElementById('discount-type'),
         discountValue: document.getElementById('discount-value'),
         deliveryCharge: document.getElementById('delivery-charge'),
+        advancePayment: document.getElementById('advance-payment'), // V10 NEW
         paymentStatus: document.getElementById('payment-status'),
         paymentLinkInput: document.getElementById('payment-link-input'),
+        footerNotes: document.getElementById('footer-notes'), // V10 NEW
 
         // Main Action Buttons
         addItemBtn: document.getElementById('add-item-btn'),
@@ -101,7 +102,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- PRIMARY INITIALIZATION ---
     function initializeApp() {
-        console.log("InstaBill LK v9 Initializing...");
+        console.log("InstaBill LK v10 Initializing...");
         registerAllEventListeners();
         loadAndApplySettings();
         renderAllLists();
@@ -114,7 +115,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- MASTER EVENT LISTENER REGISTRATION ---
     function registerAllEventListeners() {
-        const liveUpdateEls = [dom.businessName, dom.customerName, dom.customerPhone, dom.receiptDate, dom.discountType, dom.discountValue, dom.deliveryCharge, dom.applyVat, dom.applySscl, dom.paymentLinkInput];
+        const liveUpdateEls = [dom.documentType, dom.businessName, dom.customerName, dom.customerPhone, dom.receiptDate, dom.discountType, dom.discountValue, dom.deliveryCharge, dom.advancePayment, dom.applyVat, dom.applySscl, dom.paymentLinkInput, dom.footerNotes];
         liveUpdateEls.forEach(el => el.addEventListener('input', updatePreviews));
         dom.itemsList.addEventListener('input', handleItemInput);
         dom.itemsList.addEventListener('click', handleItemClick);
@@ -154,6 +155,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         // Universal modal closing
         Object.values(dom.modals).forEach(modal => {
+            if (!modal) return;
             modal.addEventListener('click', (e) => {
                 if (e.target.classList.contains('modal') || e.target.classList.contains('close-btn')) {
                     closeAllModals();
@@ -162,7 +164,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // --- CORE UI & DATA FLOW (REBUILT & STABLE) ---
+    // --- CORE UI & DATA FLOW ---
     function handleItemInput(e) {
         if (e.target.classList.contains('item-name')) {
             const product = state.productCatalog.find(p => p.name.toLowerCase() === e.target.value.toLowerCase());
@@ -193,6 +195,7 @@ document.addEventListener('DOMContentLoaded', () => {
             price: parseFloat(item.querySelector('.item-price').value) || 0,
         }));
         return {
+            documentType: dom.documentType.value, // V10 NEW
             businessName: dom.businessName.value,
             logo: localStorage.getItem('businessLogo'),
             customerName: dom.customerName.value,
@@ -203,9 +206,11 @@ document.addEventListener('DOMContentLoaded', () => {
             discountValue: parseFloat(dom.discountValue.value) || 0,
             discountType: dom.discountType.value,
             deliveryCharge: parseFloat(dom.deliveryCharge.value) || 0,
+            advancePayment: parseFloat(dom.advancePayment.value) || 0, // V10 NEW
             applyVat: dom.applyVat.checked,
             applySscl: dom.applySscl.checked,
-            paymentLink: dom.paymentLinkInput.value
+            paymentLink: dom.paymentLinkInput.value,
+            footerNotes: dom.footerNotes.value // V10 NEW
         };
     }
 
@@ -225,13 +230,17 @@ document.addEventListener('DOMContentLoaded', () => {
         const vat = data.applyVat ? totalAfterDiscount * 0.18 : 0;
         const sscl = data.applySscl ? totalAfterDiscount * 0.025 : 0;
         const grandTotal = totalAfterDiscount + vat + sscl + data.deliveryCharge;
+        const balanceDue = grandTotal - data.advancePayment; // V10 NEW
 
         const logoEl = data.logo ? `<img id="logo-preview" src="${data.logo}" alt="Logo">` : '';
+        const mainTitle = data.documentType === 'quotation' ? 'QUOTATION' : 'INVOICE'; // V10 NEW
+        const footerNotesEl = data.footerNotes ? `<p class="receipt-footer-notes">${data.footerNotes}</p>` : ''; // V10 NEW
 
         dom.receiptPreview.innerHTML = `
             <div class="receipt-header">
                 ${logoEl}
                 <h2>${data.businessName || 'Your Business'}</h2>
+                <h3>${mainTitle}</h3>
                 <p>--------------------------------</p>
                 <p><strong>Customer:</strong> ${data.customerName || 'N/A'}</p>
                 <p><strong>Phone:</strong> ${data.customerPhone || 'N/A'}</p>
@@ -252,9 +261,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 <p><strong>Delivery:</strong> Rs. <span id="delivery-amount">${data.deliveryCharge.toFixed(2)}</span></p>
                 <p>--------------------------------</p>
                 <p><strong>Grand Total:</strong> Rs. <span id="grand-total-amount">${grandTotal.toFixed(2)}</span></p>
+                <p style="display: ${data.advancePayment > 0 ? 'block' : 'none'}"><strong>Advance Paid:</strong> Rs. <span id="advance-paid-amount">-${data.advancePayment.toFixed(2)}</span></p>
+                <p><strong>Balance Due:</strong> Rs. <span id="balance-due-amount">${balanceDue.toFixed(2)}</span></p>
             </div>
             <div class="qr-code-container" id="qr-code-container"></div>
-            <div class="watermark"><p>InstaBill LK v9</p></div>
+            ${footerNotesEl}
+            <div class="receipt-branding">
+                Powered by ST Imagix | Developer: Samitha Tharanga | Contact: 071 012 2 520
+            </div>
         `;
 
         const qrContainer = document.getElementById('qr-code-container');
@@ -281,9 +295,21 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- ACTION HANDLERS ---
     function finalizeAndSaveReceipt() {
         const data = getFormData();
-        if (!data.customerName) { return showToast('Customer name is required!', true); }
+        if (data.documentType === 'quotation') {
+            // For quotations, just print or download, don't save to DB.
+            showToast('Quotation generated. Use Print or Download.', false);
+            html2canvas(dom.receiptPreview, {scale: 2.5}).then(canvas => {
+                const link = document.createElement('a');
+                link.download = `quotation-${data.customerName.replace(/\s+/g, '_')}-${Date.now()}.png`;
+                link.href = canvas.toDataURL();
+                link.click();
+            });
+            return; 
+        }
+
+        if (!data.customerName) { return showToast('Customer name is required for invoices!', true); }
         const grandTotal = parseFloat(document.getElementById('grand-total-amount').textContent);
-        if (isNaN(grandTotal) || grandTotal <= 0) { return showToast('Cannot save an empty or zero-value bill!', true); }
+        if (isNaN(grandTotal) || grandTotal <= 0) { return showToast('Cannot save an empty or zero-value invoice!', true); }
 
         let customer = state.customers.find(c => c.name === data.customerName);
         if (!customer) {
@@ -293,19 +319,20 @@ document.addEventListener('DOMContentLoaded', () => {
             customer.phone = data.customerPhone;
         }
 
+        const balanceDue = parseFloat(document.getElementById('balance-due-amount').textContent);
         if (dom.paymentStatus.value === 'credit') {
-            customer.debt = (customer.debt || 0) + grandTotal;
-            showToast(`Added Rs. ${grandTotal.toFixed(2)} to ${customer.name}'s credit.`);
+            customer.debt = (customer.debt || 0) + balanceDue;
+            showToast(`Added Rs. ${balanceDue.toFixed(2)} to ${customer.name}'s credit.`);
         } else {
             customer.loyalty = (customer.loyalty || 0) + Math.floor(grandTotal / 100);
         }
 
-        state.salesHistory.push({ ...data, total: grandTotal, id: Date.now(), status: dom.paymentStatus.value });
+        state.salesHistory.push({ ...data, total: grandTotal, balanceDue: balanceDue, id: Date.now(), status: dom.paymentStatus.value });
         saveStateAndRerender();
-        showToast('Receipt Finalized & Saved!', false);
+        showToast('Invoice Finalized & Saved!', false);
         html2canvas(dom.receiptPreview, {scale: 2.5}).then(canvas => {
             const link = document.createElement('a');
-            link.download = `receipt-${data.customerName.replace(/\s+/g, '_')}-${Date.now()}.png`;
+            link.download = `invoice-${data.customerName.replace(/\s+/g, '_')}-${Date.now()}.png`;
             link.href = canvas.toDataURL();
             link.click();
         });
@@ -318,7 +345,7 @@ document.addEventListener('DOMContentLoaded', () => {
         printWindow.document.write('<div class="receipt-section">' + dom.receiptPreview.innerHTML + '</div>');
         printWindow.document.write('</body></html>');
         printWindow.document.close();
-        printWindow.onload = function() { // Wait for content to load
+        printWindow.onload = function() { 
             printWindow.focus();
             printWindow.print();
             printWindow.close();
@@ -342,11 +369,13 @@ document.addEventListener('DOMContentLoaded', () => {
         if (billIndex === -1) return;
         const bill = state.heldBills[billIndex];
         resetForm(); // Clear the form before loading
+        dom.documentType.value = bill.documentType || 'invoice';
         dom.customerName.value = bill.customerName;
         dom.customerPhone.value = bill.customerPhone;
         dom.discountValue.value = bill.discountValue;
         dom.discountType.value = bill.discountType;
         dom.deliveryCharge.value = bill.deliveryCharge;
+        dom.advancePayment.value = bill.advancePayment || '';
         bill.items.forEach(item => addItem(item));
         state.heldBills.splice(billIndex, 1);
         saveStateAndRerender();
@@ -357,7 +386,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- CSV EXPORT ---
     function exportSalesToCsv() {
         const today = new Date().toISOString().slice(0, 10);
-        const salesToExport = state.salesHistory.filter(sale => sale.date === today);
+        const salesToExport = state.salesHistory.filter(sale => sale.date === today && sale.documentType !== 'quotation');
         if (salesToExport.length === 0) { return showToast('No sales today to export.', true); }
         const headers = ['Receipt ID', 'Date', 'Customer', 'Total', 'Status', 'Cashier'];
         const rows = salesToExport.map(s => [s.id, s.date, `"${s.customerName}"`, s.total.toFixed(2), s.status, s.cashier].join(','));
@@ -497,13 +526,20 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // --- FULLY IMPLEMENTED HELPER & SETTINGS FUNCTIONS ---
+    // --- HELPER & SETTINGS FUNCTIONS ---
     function saveStateAndRerender() {
         Object.keys(state).forEach(key => {
             if (typeof state[key] !== 'function' && !key.endsWith('Instance') && !key.endsWith('QrCode')) {
                 localStorage.setItem(key, JSON.stringify(state[key]));
             }
         });
+        // V10 - Persist specific UI values
+        localStorage.setItem('businessName', dom.businessName.value);
+        localStorage.setItem('applyVat', dom.applyVat.checked);
+        localStorage.setItem('applySscl', dom.applySscl.checked);
+        localStorage.setItem('paymentLink', dom.paymentLinkInput.value);
+        localStorage.setItem('footerNotes', dom.footerNotes.value);
+
         renderAllLists();
     }
 
@@ -512,6 +548,7 @@ document.addEventListener('DOMContentLoaded', () => {
         dom.applyVat.checked = JSON.parse(localStorage.getItem('applyVat')) || false;
         dom.applySscl.checked = JSON.parse(localStorage.getItem('applySscl')) || false;
         dom.paymentLinkInput.value = localStorage.getItem('paymentLink') || '';
+        dom.footerNotes.value = localStorage.getItem('footerNotes') || 'Goods once sold will not be taken back.'; // V10 NEW
         const theme = localStorage.getItem('receiptTheme') || 'theme-classic';
         dom.receiptThemeSelect.value = theme;
         applyReceiptTheme(theme);
@@ -637,7 +674,9 @@ document.addEventListener('DOMContentLoaded', () => {
         dom.itemsList.innerHTML = '';
         dom.discountValue.value = '';
         dom.deliveryCharge.value = '';
+        dom.advancePayment.value = ''; // V10 NEW
         dom.paymentStatus.value = 'paid';
+        dom.documentType.value = 'invoice'; // V10 NEW
         updatePreviews();
     }
 
@@ -682,11 +721,11 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
     
-    // --- REPLACED DUMMY FUNCTIONS WITH FULL IMPLEMENTATION ---
+    // --- DASHBOARD & REPORTING ---
     function renderSalesDashboard() {
         const today = new Date().toISOString().slice(0, 10);
         
-        const todaysSales = state.salesHistory.filter(sale => sale.date === today && sale.status === 'paid');
+        const todaysSales = state.salesHistory.filter(sale => sale.date === today && sale.status === 'paid' && sale.documentType !== 'quotation');
         const todaysExpenses = state.expenses.filter(exp => exp.date === today);
         
         const totalSales = todaysSales.reduce((acc, sale) => acc + sale.total, 0);
@@ -706,7 +745,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         state.salesHistory.forEach(sale => {
-            if (salesByDay.hasOwnProperty(sale.date) && sale.status === 'paid') {
+            if (salesByDay.hasOwnProperty(sale.date) && sale.status === 'paid' && sale.documentType !== 'quotation') {
                 salesByDay[sale.date] += sale.total;
             }
         });
@@ -740,7 +779,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         const salesHistoryList = document.getElementById('sales-history-list');
-        const recentSales = [...state.salesHistory].reverse().slice(0, 20);
+        const recentSales = [...state.salesHistory].filter(s => s.documentType !== 'quotation').reverse().slice(0, 20);
         if (recentSales.length === 0) {
             salesHistoryList.innerHTML = '<p>No recent transactions.</p>';
             return;
@@ -776,6 +815,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function renderExpensesList(){
+        if (!dom.expenseList) return;
         dom.expenseList.innerHTML = state.expenses.map(exp => `<div><span>${exp.date}: ${exp.description} - Rs.${exp.amount.toFixed(2)}</span></div>`).join('');
     }
 
