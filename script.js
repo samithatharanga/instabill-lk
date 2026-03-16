@@ -347,7 +347,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             customer.phone = data.customerPhone;
         }
-        
+
         const balanceDue = parseFloat(document.getElementById('balance-due-amount').textContent);
         if (dom.paymentStatus.value === 'credit') {
             customer.debt = (customer.debt || 0) + balanceDue;
