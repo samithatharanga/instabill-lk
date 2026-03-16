@@ -230,11 +230,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const vat = data.applyVat ? totalAfterDiscount * 0.18 : 0;
         const sscl = data.applySscl ? totalAfterDiscount * 0.025 : 0;
         const grandTotal = totalAfterDiscount + vat + sscl + data.deliveryCharge;
-        const balanceDue = grandTotal - data.advancePayment; // V10 NEW
+        const balanceDue = grandTotal - data.advancePayment;
 
         const logoEl = data.logo ? `<img id="logo-preview" src="${data.logo}" alt="Logo">` : '';
-        const mainTitle = data.documentType === 'quotation' ? 'QUOTATION' : 'INVOICE'; // V10 NEW
-        const footerNotesEl = data.footerNotes ? `<p class="receipt-footer-notes">${data.footerNotes}</p>` : ''; // V10 NEW
+        const mainTitle = data.documentType === 'quotation' ? 'QUOTATION' : 'INVOICE';
+        const footerNotesEl = data.footerNotes ? `<p class="receipt-footer-notes">${data.footerNotes}</p>` : '';
 
         dom.receiptPreview.innerHTML = `
             <div class="receipt-header">
@@ -266,9 +266,7 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>
             <div class="qr-code-container" id="qr-code-container"></div>
             ${footerNotesEl}
-            <div class="receipt-branding">
-                Powered by ST Imagix | Developer: Samitha Tharanga | Contact: 071 012 2 520
-            </div>
+            <div class="receipt-branding" style="font-size: 11px; text-align: center; margin-top: 15px; border-top: 1px dashed #ccc; padding-top: 10px; color: #555; font-weight: bold;">Powered by ST Imagix <br> Developer: Samitha Tharanga | 071 012 2 520</div>
         `;
 
         const qrContainer = document.getElementById('qr-code-container');
