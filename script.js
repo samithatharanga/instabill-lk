@@ -347,7 +347,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             customer.phone = data.customerPhone;
         }
-
+        
         const balanceDue = parseFloat(document.getElementById('balance-due-amount').textContent);
         if (dom.paymentStatus.value === 'credit') {
             customer.debt = (customer.debt || 0) + balanceDue;
@@ -874,12 +874,12 @@ document.addEventListener('DOMContentLoaded', () => {
     function renderSalesDashboard() {
         const today = new Date().toISOString().slice(0, 10);
         
-        // FIX: Filter for TODAY's paid transactions that are NOT quotations (includes 'invoice' and 'bill')
+        // FIX: Filter for TODAY's paid transactions for 'invoice' and 'bill', excluding 'quotation'
         const todaysSales = state.salesHistory.filter(s => 
             s.dateTime && 
             s.dateTime.startsWith(today) && 
             s.status === 'paid' && 
-            s.documentType !== 'quotation'
+            (s.documentType === 'invoice' || s.documentType === 'bill')
         );
         
         const todaysExpenses = state.expenses.filter(exp => exp.date === today);
@@ -903,7 +903,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         state.salesHistory.forEach(sale => {
             const saleDate = sale.dateTime.slice(0,10);
-            if (salesByDay.hasOwnProperty(saleDate) && sale.status === 'paid' && sale.documentType !== 'quotation') {
+            if (salesByDay.hasOwnProperty(saleDate) && sale.status === 'paid' && (sale.documentType === 'invoice' || sale.documentType === 'bill')) {
                 salesByDay[saleDate] += sale.total;
             }
         });
@@ -914,7 +914,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const ctx = document.getElementById('sales-chart')?.getContext('2d');
         if (!ctx) return; // Don't proceed if chart canvas is not found
 
-        if (state.salesChart) state.salesChart.destroy();
+        if (state.salesChart) state.salesChart.destroy(); // FIX: Destroy existing chart before re-rendering
         state.salesChart = new Chart(ctx, {
             type: 'bar',
             data: {

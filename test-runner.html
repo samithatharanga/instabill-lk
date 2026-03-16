@@ -1,0 +1,50 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width">
+  <title>InstaBill Test Suite</title>
+  <link rel="stylesheet" href="https://code.jquery.com/qunit/qunit-2.20.0.css">
+</head>
+<body>
+  <div id="qunit"></div>
+  <div id="qunit-fixture">
+    <!-- HTML fixtures for the tests -->
+    <input id="customer-name" type="text">
+    <input id="customer-phone" type="text">
+    <div id="items-list"></div>
+    <div id="receipt-preview">
+        <span id="subtotal-amount"></span>
+        <span id="discount-amount"></span>
+        <span id="vat-amount"></span>
+        <span id="grand-total-amount"></span>
+        <span id="balance-due-amount"></span>
+    </div>
+    <select id="document-type"></select>
+    <input id="business-name"/>
+    <input id="receipt-date"/>
+    <select id="discount-type"></select>
+    <input id="discount-value"/>
+    <input id="delivery-charge"/>
+    <input id="advance-payment"/>
+    <input id="payment-status"/>
+    <input id="payment-link-input"/>
+    <input id="footer-notes"/>
+    <button id="add-item-btn"></button>
+    <button id="scan-barcode-btn"></button>
+    <button id="finalize-btn"></button>
+    <button id="print-receipt-btn"></button>
+    <button id="hold-bill-btn"></button>
+    <button id="resume-bills-btn"></button>
+    <div id="current-cashier"></div>
+    <div id="offline-indicator"></div>
+
+
+
+  </div>
+  <script src="https://code.jquery.com/qunit/qunit-2.20.0.js"></script>
+  <script src="script.js"></script>
+  <script src="script.test.js"></script>
+</body>
+</html>
