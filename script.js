@@ -1,6 +1,6 @@
 document.addEventListener('DOMContentLoaded', () => {
     // ===================================================================================
-    // InstaBill LK v11 (The Ultimate Retail & Data Sync Update)
+    // InstaBill LK v11 (The Ultimate Retail & Data Sync Update) - DEBUGGED
     // Lead Architect: Gemini (SaaS Mode) for ST Imagix
     // ===================================================================================
 
@@ -433,9 +433,10 @@ document.addEventListener('DOMContentLoaded', () => {
     function exportInventoryToCsv() {
         if (state.productCatalog.length === 0) { return showToast('Inventory is empty.', true); }
         const headers = ['Name', 'Price', 'Stock', 'Barcode'];
-        const rows = state.productCatalog.map(p => [
-            `"${p.name.replace(/"/g, '''''')}"`, p.price, p.stock || 0, p.barcode || ''
-        ].join(','));
+        const rows = state.productCatalog.map(p => {
+            const safeName = '"' + p.name.replace(/"/g, '""') + '"';
+            return [safeName, p.price, p.stock || 0, p.barcode || ''].join(',');
+        });
         downloadCsv([headers.join(','), ...rows].join('\n'), 'inventory_export.csv');
         showToast('Inventory exported.');
     }
@@ -831,6 +832,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const product = state.productCatalog.find(p => p.barcode === decodedText);
                 if (product) {
                     addItem(product);
+
                     showToast(`Added ${product.name} from barcode.`);
                 } else {
                     showToast('Product not found for this barcode.', true);
