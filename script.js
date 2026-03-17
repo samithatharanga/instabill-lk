@@ -1,10 +1,10 @@
 document.addEventListener('DOMContentLoaded', () => {
     // ===================================================================================
-    // InstaBill LK v11.9 (THE COMPLETE RESTORATION)
-    // Developed by Samitha Tharanga Wijesinghe | ST Imagix
+    // InstaBill LK v12.0 (FINAL COMPLETE PRODUCTION BUILD)
+    // Lead Architect: Samitha Tharanga Wijesinghe | ST Imagix
     // ===================================================================================
 
-    // --- State & Storage ---
+    // --- State Management ---
     const state = {
         productCatalog: JSON.parse(localStorage.getItem('productCatalog')) || [],
         customers: JSON.parse(localStorage.getItem('customers')) || [],
@@ -16,7 +16,6 @@ document.addEventListener('DOMContentLoaded', () => {
         salesChart: null
     };
 
-    // --- DOM Elements ---
     const dom = {
         itemsList: document.getElementById('items-list'),
         receiptPreview: document.getElementById('receipt-preview'),
@@ -39,185 +38,245 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    // --- Initialization ---
+    // --- Primary Initialization ---
     function init() {
-        registerEvents();
-        renderSalesDashboard();
+        registerAllEvents();
         renderProductList();
         renderCreditLedger();
         renderCashierList();
-        loadLogo();
+        renderSalesDashboard();
+        loadSettings();
+        updateReceipt();
     }
 
-    function registerEvents() {
-        // Form Buttons
+    function registerAllEvents() {
+        // Core Buttons
         document.getElementById('add-item-btn').onclick = () => addItem();
         document.getElementById('finalize-btn').onclick = finalizeAndSave;
         document.getElementById('hold-bill-btn').onclick = holdBill;
-        document.getElementById('resume-bills-btn').onclick = () => { dom.modals.heldBills.style.display = 'block'; renderHeldBills(); };
+        document.getElementById('resume-bills-btn').onclick = () => openModal(dom.modals.heldBills, renderHeldBills);
         
-        // Modal Open Buttons
-        document.getElementById('open-dashboard-btn').onclick = () => { dom.modals.dashboard.style.display = 'block'; renderSalesDashboard(); };
-        document.getElementById('open-ledger-btn').onclick = () => { dom.modals.ledger.style.display = 'block'; renderCreditLedger(); };
-        document.getElementById('open-catalog-btn').onclick = () => dom.modals.catalog.style.display = 'block';
-        document.getElementById('open-settings-btn').onclick = () => dom.modals.settings.style.display = 'block';
+        // Navigation Modals
+        document.getElementById('open-dashboard-btn').onclick = () => openModal(dom.modals.dashboard, renderSalesDashboard);
+        document.getElementById('open-ledger-btn').onclick = () => openModal(dom.modals.ledger, renderCreditLedger);
+        document.getElementById('open-catalog-btn').onclick = () => openModal(dom.modals.catalog, renderProductList);
+        document.getElementById('open-settings-btn').onclick = () => openModal(dom.modals.settings);
 
-        // Data & Settings
+        // Settings Actions
+        document.getElementById('upload-logo-btn').onclick = () => document.getElementById('business-logo-upload').click();
+        document.getElementById('business-logo-upload').onchange = handleLogoUpload;
         document.getElementById('backup-data-btn').onclick = backupData;
         document.getElementById('restore-data-btn').onclick = () => document.getElementById('restore-data-input').click();
         document.getElementById('restore-data-input').onchange = restoreData;
         document.getElementById('clear-data-btn').onclick = clearAllData;
-        document.getElementById('upload-logo-btn').onclick = () => document.getElementById('business-logo-upload').click();
-        document.getElementById('business-logo-upload').onchange = saveLogo;
 
-        // Inventory
-        document.getElementById('add-product-form').onsubmit = addProduct;
-        document.getElementById('export-inventory-btn').onclick = exportInventory;
+        // Inventory Form
+        document.getElementById('add-product-form').onsubmit = handleAddProduct;
 
-        // Dashboard
+        // Dashboard Buttons
         document.getElementById('z-report-btn').onclick = generateZReport;
         document.getElementById('download-sales-csv-btn').onclick = exportSalesCSV;
 
-        // Global Modal Close
+        // Close Modals
         document.querySelectorAll('.close-btn').forEach(btn => {
             btn.onclick = () => Object.values(dom.modals).forEach(m => m.style.display = 'none');
         });
 
-        // Real-time Preview
-        const inputs = [dom.businessName, dom.customerName, dom.customerPhone, dom.discountValue, dom.deliveryCharge, dom.advancePayment, dom.documentType];
-        inputs.forEach(el => el && el.addEventListener('input', updateReceipt));
+        // Auto Updates
+        const realTimeFields = [dom.businessName, dom.customerName, dom.customerPhone, dom.discountValue, dom.deliveryCharge, dom.advancePayment, dom.documentType];
+        realTimeFields.forEach(field => field?.addEventListener('input', updateReceipt));
     }
 
     // --- Core Functions ---
     function addItem(prod = {}) {
         const div = document.createElement('div');
         div.className = 'bill-item-row';
-        div.style = "display:flex; gap:5px; margin-bottom:5px;";
+        div.style = "display:flex; gap:5px; margin-bottom:8px;";
         div.innerHTML = `
             <input type="text" class="in-name" placeholder="Item" value="${prod.name || ''}" style="flex:3;">
             <input type="number" class="in-qty" placeholder="Qty" value="${prod.qty || 1}" style="flex:1;">
             <input type="number" class="in-price" placeholder="Price" value="${prod.price || ''}" style="flex:1;">
-            <button class="remove-btn" style="background:red; color:#fff; border:none; border-radius:4px; padding:5px 10px;">×</button>
+            <button class="rm-btn" style="background:#ff4d4d; color:white; border:none; border-radius:4px; width:30px;">×</button>
         `;
         dom.itemsList.appendChild(div);
         div.querySelectorAll('input').forEach(i => i.oninput = updateReceipt);
-        div.querySelector('.remove-btn').onclick = () => { div.remove(); updateReceipt(); };
+        div.querySelector('.rm-btn').onclick = () => { div.remove(); updateReceipt(); };
         updateReceipt();
     }
 
     function updateReceipt() {
-        const data = getFormData();
+        const data = getItemsData();
         let subtotal = 0;
-        let itemsHTML = data.items.map(i => {
+        let itemsHtml = data.map(i => {
             const total = i.qty * i.price;
             subtotal += total;
-            return `<tr><td>${i.name}</td><td align="right">${i.qty}</td><td align="right">${total.toFixed(2)}</td></tr>`;
+            return `<tr><td>${i.name || 'Item'}</td><td align="right">${i.qty}</td><td align="right">${total.toFixed(2)}</td></tr>`;
         }).join('');
 
-        const discount = (parseFloat(dom.discountValue.value) || 0);
-        const total = subtotal - discount + (parseFloat(dom.deliveryCharge.value) || 0);
-        const due = total - (parseFloat(dom.advancePayment.value) || 0);
+        const discount = parseFloat(dom.discountValue.value) || 0;
+        const delivery = parseFloat(dom.deliveryCharge.value) || 0;
+        const advance = parseFloat(dom.advancePayment.value) || 0;
+        const total = subtotal - discount + delivery;
+        const balance = total - advance;
 
-        const logoHTML = localStorage.getItem('businessLogo') ? `<img src="${localStorage.getItem('businessLogo')}" style="max-height:60px; margin-bottom:10px;">` : '';
+        const logo = localStorage.getItem('businessLogo');
+        const logoHtml = logo ? `<img src="${logo}" style="max-height:60px; margin-bottom:10px;">` : '';
 
         dom.receiptPreview.innerHTML = `
             <div style="text-align:center;">
-                ${logoHTML}
-                <h2>${dom.businessName.value || 'Business Name'}</h2>
-                <p style="text-transform:uppercase;">${dom.documentType.value}</p>
+                ${logoHtml}
+                <h2 style="margin:0;">${dom.businessName.value || 'ST Imagix'}</h2>
+                <p style="text-transform:uppercase; font-weight:bold; margin:5px 0;">${dom.documentType.value}</p>
                 <hr>
                 <p align="left">Customer: ${dom.customerName.value || 'N/A'}<br>Date: ${new Date().toLocaleDateString()}</p>
             </div>
-            <table width="100%">${itemsHTML}</table>
+            <table width="100%" style="font-size:13px;">${itemsHtml}</table>
             <hr>
             <div align="right">
-                <p>Total: <strong>Rs. <span id="final-tot">${total.toFixed(2)}</span></strong></p>
-                <p>Balance Due: Rs. ${due.toFixed(2)}</p>
+                <p>Subtotal: ${subtotal.toFixed(2)}</p>
+                <p>Discount: -${discount.toFixed(2)}</p>
+                <p><strong>Grand Total: Rs. <span id="final-tot-val">${total.toFixed(2)}</span></strong></p>
+                <p>Balance Due: Rs. ${balance.toFixed(2)}</p>
             </div>
-            <div style="text-align:center; font-size:10px; margin-top:20px;">Powered by ST Imagix</div>
+            <div style="text-align:center; font-size:10px; margin-top:20px; border-top:1px dashed #ccc; padding-top:5px;">
+                Software by ST Imagix | 071 012 2 520
+            </div>
         `;
     }
 
-    function getFormData() {
-        return {
-            items: Array.from(document.querySelectorAll('.bill-item-row')).map(row => ({
-                name: row.querySelector('.in-name').value,
-                qty: parseFloat(row.querySelector('.in-qty').value) || 0,
-                price: parseFloat(row.querySelector('.in-price').value) || 0
-            }))
-        };
+    function getItemsData() {
+        return Array.from(document.querySelectorAll('.bill-item-row')).map(row => ({
+            name: row.querySelector('.in-name').value,
+            qty: parseFloat(row.querySelector('.in-qty').value) || 0,
+            price: parseFloat(row.querySelector('.in-price').value) || 0
+        }));
     }
 
     async function finalizeAndSave() {
-        const data = getFormData();
-        const total = parseFloat(document.getElementById('final-tot').textContent);
-        if (!dom.customerName.value || data.items.length === 0) return alert("Fill Name and Items!");
+        const items = getItemsData();
+        const totalVal = document.getElementById('final-tot-val');
+        const total = totalVal ? parseFloat(totalVal.textContent) : 0;
+
+        if (!dom.customerName.value || items.length === 0) return alert("Please add customer name and items!");
+
+        // Deduct Stock from Inventory
+        items.forEach(soldItem => {
+            const product = state.productCatalog.find(p => p.name.toLowerCase() === soldItem.name.toLowerCase());
+            if (product) product.stock = Math.max(0, product.stock - soldItem.qty);
+        });
 
         const sale = {
             id: Date.now(),
             customerName: dom.customerName.value,
-            customerPhone: dom.customerPhone.value,
             total: total,
             status: dom.paymentStatus.value,
-            documentType: dom.documentType.value,
             dateTime: new Date().toISOString(),
-            items: data.items
+            items: items
         };
 
         state.salesHistory.push(sale);
-        localStorage.setItem('salesHistory', JSON.stringify(state.salesHistory));
+        saveToStorage();
 
-        // Auto Download Bill as Image
+        // Download as Image
         const canvas = await html2canvas(dom.receiptPreview);
         const link = document.createElement('a');
-        link.download = `bill-${sale.id}.png`;
+        link.download = `Receipt-${sale.id}.png`;
         link.href = canvas.toDataURL();
         link.click();
 
-        alert("Saved & Bill Downloaded!");
+        alert("Transaction Finalized and Receipt Downloaded!");
         location.reload();
     }
 
-    // --- Features Section ---
+    // --- Feature Functions ---
     function holdBill() {
-        const bill = { id: Date.now(), customer: dom.customerName.value, items: getFormData().items };
+        const bill = { 
+            id: Date.now(), 
+            customer: dom.customerName.value || 'Walking Customer', 
+            items: getItemsData(),
+            date: new Date().toISOString()
+        };
         state.heldBills.push(bill);
-        localStorage.setItem('heldBills', JSON.stringify(state.heldBills));
-        alert("Bill Held!");
+        saveToStorage();
+        alert("Bill Saved to 'Held Bills'.");
         location.reload();
     }
 
     function renderHeldBills() {
-        const list = document.getElementById('held-bills-list');
-        list.innerHTML = state.heldBills.map(b => `<div>${b.customer} <button onclick="resumeBill(${b.id})">Resume</button></div>`).join('');
+        const container = document.getElementById('held-bills-list');
+        if (state.heldBills.length === 0) return container.innerHTML = "<p>No bills on hold.</p>";
+        container.innerHTML = state.heldBills.map(b => `
+            <div style="display:flex; justify-content:space-between; padding:10px; border-bottom:1px solid #eee;">
+                <span>${b.customer} (${b.items.length} items)</span>
+                <button onclick="resumeBill(${b.id})" style="background:#007bff; color:white; border:none; padding:5px 10px; border-radius:4px;">Resume</button>
+            </div>
+        `).join('');
     }
 
-    function backupData() {
-        const blob = new Blob([JSON.stringify(state)], { type: 'application/json' });
-        const link = document.createElement('a');
-        link.href = URL.createObjectURL(blob);
-        link.download = `instabill_backup_${new Date().toISOString().slice(0,10)}.json`;
-        link.click();
-    }
+    window.resumeBill = (id) => {
+        const billIndex = state.heldBills.findIndex(b => b.id === id);
+        const bill = state.heldBills[billIndex];
+        dom.customerName.value = bill.customer;
+        dom.itemsList.innerHTML = '';
+        bill.items.forEach(i => addItem(i));
+        state.heldBills.splice(billIndex, 1);
+        saveToStorage();
+        Object.values(dom.modals).forEach(m => m.style.display = 'none');
+        updateReceipt();
+    };
 
-    function restoreData(e) {
-        const reader = new FileReader();
-        reader.onload = (event) => {
-            const data = JSON.parse(event.target.result);
-            Object.assign(state, data);
-            localStorage.setItem('productCatalog', JSON.stringify(state.productCatalog));
-            localStorage.setItem('salesHistory', JSON.stringify(state.salesHistory));
-            alert("Data Restored!");
-            location.reload();
+    function handleAddProduct(e) {
+        e.preventDefault();
+        const product = {
+            name: document.getElementById('product-name-input').value,
+            price: parseFloat(document.getElementById('product-price-input').value),
+            stock: parseInt(document.getElementById('product-stock-input').value) || 0
         };
-        reader.readAsText(e.target.files[0]);
+        state.productCatalog.push(product);
+        saveToStorage();
+        renderProductList();
+        e.target.reset();
     }
 
-    function clearAllData() {
-        if(confirm("Delete EVERYTHING?")) { localStorage.clear(); location.reload(); }
+    function renderProductList() {
+        const list = document.getElementById('product-list');
+        list.innerHTML = `<table width="100%">
+            <tr style="background:#f4f4f4;"><th>Product</th><th>Price</th><th>Stock</th></tr>
+            ${state.productCatalog.map(p => `<tr><td>${p.name}</td><td>${p.price.toFixed(2)}</td><td>${p.stock}</td></tr>`).join('')}
+        </table>`;
     }
 
-    function saveLogo(e) {
+    function renderSalesDashboard() {
+        const today = new Date().toISOString().slice(0, 10);
+        const sales = state.salesHistory.filter(s => s.dateTime.startsWith(today) && s.status === 'paid');
+        const total = sales.reduce((acc, s) => acc + s.total, 0);
+        document.getElementById('total-sales').textContent = `Rs. ${total.toFixed(2)}`;
+
+        const ctx = document.getElementById('sales-chart').getContext('2d');
+        if (state.salesChart) state.salesChart.destroy();
+        state.salesChart = new Chart(ctx, {
+            type: 'bar',
+            data: { labels: ['Today'], datasets: [{ label: 'Sales', data: [total], backgroundColor: '#007bff' }] },
+            options: { responsive: true, maintainAspectRatio: false }
+        });
+    }
+
+    function generateZReport() {
+        const today = new Date().toISOString().slice(0, 10);
+        const sales = state.salesHistory.filter(s => s.dateTime.startsWith(today));
+        const total = sales.reduce((acc, s) => acc + s.total, 0);
+        document.getElementById('z-report-content').innerHTML = `
+            <div style="text-align:center; font-family:monospace;">
+                <h3>DAILY Z-REPORT</h3>
+                <p>Date: ${today}</p><hr>
+                <p>Total Revenue: Rs. ${total.toFixed(2)}</p>
+                <p>Transactions: ${sales.length}</p>
+            </div>`;
+        dom.modals.zReport.style.display = 'block';
+    }
+
+    // --- Helper Functions ---
+    function handleLogoUpload(e) {
         const reader = new FileReader();
         reader.onload = (event) => {
             localStorage.setItem('businessLogo', event.target.result);
@@ -226,67 +285,69 @@ document.addEventListener('DOMContentLoaded', () => {
         reader.readAsDataURL(e.target.files[0]);
     }
 
-    function loadLogo() { if(localStorage.getItem('businessLogo')) updateReceipt(); }
-
-    function addProduct(e) {
-        e.preventDefault();
-        const prod = {
-            name: document.getElementById('product-name-input').value,
-            price: parseFloat(document.getElementById('product-price-input').value),
-            stock: parseInt(document.getElementById('product-stock-input').value) || 0
-        };
-        state.productCatalog.push(prod);
+    function saveToStorage() {
         localStorage.setItem('productCatalog', JSON.stringify(state.productCatalog));
-        renderProductList();
-        e.target.reset();
+        localStorage.setItem('salesHistory', JSON.stringify(state.salesHistory));
+        localStorage.setItem('heldBills', JSON.stringify(state.heldBills));
     }
 
-    function renderProductList() {
-        const list = document.getElementById('product-list');
-        list.innerHTML = `<table>${state.productCatalog.map(p => `<tr><td>${p.name}</td><td>${p.price}</td><td>${p.stock}</td></tr>`).join('')}</table>`;
+    function loadSettings() {
+        dom.businessName.value = localStorage.getItem('businessName') || 'ST Imagix';
+    }
+
+    function openModal(modal, callback) {
+        modal.style.display = 'block';
+        if (callback) callback();
+    }
+
+    function backupData() {
+        const data = JSON.stringify(state);
+        const blob = new Blob([data], { type: 'application/json' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `backup-${new Date().toISOString().slice(0,10)}.json`;
+        a.click();
+    }
+
+    function restoreData(e) {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            const data = JSON.parse(event.target.result);
+            Object.assign(state, data);
+            saveToStorage();
+            alert("Data Restored Successfully!");
+            location.reload();
+        };
+        reader.readAsText(e.target.files[0]);
+    }
+
+    function clearAllData() {
+        if (confirm("DANGER: This will delete ALL data forever. Continue?")) {
+            localStorage.clear();
+            location.reload();
+        }
     }
 
     function renderCreditLedger() {
         const list = document.getElementById('credit-ledger-list');
-        const debtors = state.salesHistory.filter(s => s.status === 'credit');
-        list.innerHTML = `<table>${debtors.map(d => `<tr><td>${d.customerName}</td><td>${d.total}</td></tr>`).join('')}</table>`;
+        const creditSales = state.salesHistory.filter(s => s.status === 'credit');
+        list.innerHTML = `<table width="100%">
+            <tr><th>Customer</th><th>Amount</th><th>Date</th></tr>
+            ${creditSales.map(s => `<tr><td>${s.customerName}</td><td>${s.total.toFixed(2)}</td><td>${s.dateTime.slice(0,10)}</td></tr>`).join('')}
+        </table>`;
+    }
+
+    function renderCashierList() {
+        document.getElementById('cashier-list').innerHTML = state.cashiers.map(c => `<div>👤 ${c}</div>`).join('');
     }
 
     function exportSalesCSV() {
         let csv = "Date,Customer,Total,Status\n";
-        state.salesHistory.forEach(s => csv += `${s.dateTime.slice(0,10)},${s.customerName},${s.total},${s.status}\n`);
-        const link = document.createElement('a');
-        link.href = 'data:text/csv;charset=utf-8,' + encodeURI(csv);
-        link.download = 'sales_history.csv';
-        link.click();
-    }
-
-    function generateZReport() {
-        const today = new Date().toISOString().slice(0,10);
-        const sales = state.salesHistory.filter(s => s.dateTime.startsWith(today));
-        const total = sales.reduce((acc, s) => acc + s.total, 0);
-        document.getElementById('z-report-content').innerHTML = `<h3>Daily Z-Report</h3><hr><p>Total Sales: Rs. ${total.toFixed(2)}</p><p>Bills: ${sales.length}</p>`;
-        dom.modals.zReport.style.display = 'block';
-    }
-
-    function renderSalesDashboard() {
-        const today = new Date().toISOString().slice(0,10);
-        const todaysSales = state.salesHistory.filter(s => s.dateTime.startsWith(today) && s.status === 'paid');
-        const total = todaysSales.reduce((acc, s) => acc + s.total, 0);
-        document.getElementById('total-sales').textContent = `Rs. ${total.toFixed(2)}`;
-        
-        const ctx = document.getElementById('sales-chart').getContext('2d');
-        if(state.salesChart) state.salesChart.destroy();
-        state.salesChart = new Chart(ctx, {
-            type: 'bar',
-            data: { labels: [today], datasets: [{ label: 'Sales', data: [total], backgroundColor: '#007bff' }] },
-            options: { responsive: true, maintainAspectRatio: false }
-        });
-    }
-
-    function renderCashierList() {
-        const list = document.getElementById('cashier-list');
-        list.innerHTML = state.cashiers.map(c => `<div>${c}</div>`).join('');
+        state.salesHistory.forEach(s => csv += `${s.dateTime.slice(0,10)},${s.customerName},${s.total.toFixed(2)},${s.status}\n`);
+        const a = document.createElement('a');
+        a.href = 'data:text/csv;charset=utf-8,' + encodeURI(csv);
+        a.download = 'sales_history.csv';
+        a.click();
     }
 
     init();
